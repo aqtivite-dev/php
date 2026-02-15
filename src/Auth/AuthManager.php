@@ -3,25 +3,23 @@
 namespace Aqtivite\Php\Auth;
 
 use Aqtivite\Php\Config;
+use Aqtivite\Php\Contracts\HttpTransportInterface;
+use Aqtivite\Php\Exceptions\AqtiviteException;
 use Aqtivite\Php\Exceptions\AuthenticationException;
-use GuzzleHttp\Client;
-use GuzzleHttp\Exception\GuzzleException;
 
 class AuthManager
 {
-    private Client $guzzle;
     private ?Token $token = null;
     private ?CredentialInterface $credential = null;
 
     public function __construct(
         private readonly Config $config,
-    ) {
-        $this->guzzle = new Client([
-            'http_errors' => false,
-            'headers' => [
-                'Accept' => 'application/json',
-            ],
-        ]);
+        private HttpTransportInterface $transport,
+    ) {}
+
+    public function setTransport(HttpTransportInterface $transport): void
+    {
+        $this->transport = $transport;
     }
 
     public function setCredential(CredentialInterface $credential): void
@@ -71,19 +69,14 @@ class AuthManager
         }
 
         try {
-            $response = $this->guzzle->get(
-                $this->config->getBaseUrl() . '/auth',
-                [
-                    'headers' => [
-                        'Authorization' => 'Bearer ' . $this->token->accessToken,
-                    ],
+            $response = $this->transport->send('GET', $this->config->getBaseUrl() . '/auth', [
+                'headers' => [
+                    'Authorization' => 'Bearer ' . $this->token->accessToken,
                 ],
-            );
+            ]);
 
-            $body = json_decode($response->getBody()->getContents(), true) ?? [];
-
-            return ($body['status'] ?? false) === true;
-        } catch (GuzzleException) {
+            return ($response->body['status'] ?? false) === true;
+        } catch (AqtiviteException) {
             return false;
         }
     }
@@ -95,23 +88,20 @@ class AuthManager
         }
 
         try {
-            $response = $this->guzzle->post(
-                $this->config->getBaseUrl() . '/oauth/token',
-                [
-                    'form_params' => [
-                        'grant_type' => 'refresh_token',
-                        'refresh_token' => $this->token->refreshToken,
-                        'client_id' => $this->config->clientId,
-                        'client_secret' => $this->config->clientSecret,
-                        'scope' => '',
-                    ],
+            $response = $this->transport->send('POST', $this->config->getBaseUrl() . '/oauth/token', [
+                'form_params' => [
+                    'grant_type' => 'refresh_token',
+                    'refresh_token' => $this->token->refreshToken,
+                    'client_id' => $this->config->clientId,
+                    'client_secret' => $this->config->clientSecret,
+                    'scope' => '',
                 ],
-            );
-        } catch (GuzzleException $e) {
+            ]);
+        } catch (AqtiviteException $e) {
             throw new AuthenticationException('Token refresh failed: ' . $e->getMessage(), previous: $e);
         }
 
-        $body = json_decode($response->getBody()->getContents(), true) ?? [];
+        $body = $response->body;
 
         if (isset($body['error'])) {
             throw new AuthenticationException($body['message'] ?? $body['error_description'] ?? 'Token refresh failed.');
@@ -133,31 +123,30 @@ class AuthManager
             throw new AuthenticationException('No credentials configured. Use setAccount() or setApiKey() first.');
         }
 
-        $body = $this->credential->toRequestBody(
+        $formData = $this->credential->toRequestBody(
             $this->config->clientId,
             $this->config->clientSecret,
         );
 
         try {
-            $response = $this->guzzle->post(
-                $this->config->getBaseUrl() . '/oauth/token',
-                ['form_params' => $body],
-            );
-        } catch (GuzzleException $e) {
+            $response = $this->transport->send('POST', $this->config->getBaseUrl() . '/oauth/token', [
+                'form_params' => $formData,
+            ]);
+        } catch (AqtiviteException $e) {
             throw new AuthenticationException('Authentication failed: ' . $e->getMessage(), previous: $e);
         }
 
-        $result = json_decode($response->getBody()->getContents(), true) ?? [];
+        $body = $response->body;
 
-        if (isset($result['error'])) {
-            throw new AuthenticationException($result['message'] ?? $result['error_description'] ?? 'Authentication failed.');
+        if (isset($body['error'])) {
+            throw new AuthenticationException($body['message'] ?? $body['error_description'] ?? 'Authentication failed.');
         }
 
         $this->token = new Token(
-            accessToken: $result['access_token'],
-            refreshToken: $result['refresh_token'] ?? null,
-            tokenType: $result['token_type'] ?? 'Bearer',
-            expiresIn: $result['expires_in'] ?? null,
+            accessToken: $body['access_token'],
+            refreshToken: $body['refresh_token'] ?? null,
+            tokenType: $body['token_type'] ?? 'Bearer',
+            expiresIn: $body['expires_in'] ?? null,
         );
 
         return $this->token;

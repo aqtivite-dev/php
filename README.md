@@ -40,6 +40,32 @@ $client->testMode(); // api.test.aqtivite.com.tr adresine bağlanır
 $client->setBaseUrl('https://custom-api.example.com');
 ```
 
+### Özel HTTP Transport
+
+SDK varsayılan olarak Guzzle kullanır. İsterseniz `setTransport()` ile kendi HTTP transport'unuzu kullanabilirsiniz (ör: Laravel Http).
+
+```php
+use Aqtivite\Php\Contracts\HttpTransportInterface;
+use Aqtivite\Php\Http\TransportResponse;
+
+class LaravelTransport implements HttpTransportInterface
+{
+    public function send(string $method, string $url, array $options = []): TransportResponse
+    {
+        $response = Http::withHeaders($options['headers'] ?? [])
+            ->send($method, $url, $options);
+
+        return new TransportResponse(
+            statusCode: $response->status(),
+            body: $response->json() ?? [],
+        );
+    }
+}
+
+$client = new Aqtivite('client-id', 'client-secret');
+$client->setTransport(new LaravelTransport());
+```
+
 ## Kimlik Doğrulama
 
 ### Kullanıcı Adı / Şifre

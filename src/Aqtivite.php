@@ -6,6 +6,8 @@ use Aqtivite\Php\Auth\ApiCredential;
 use Aqtivite\Php\Auth\AuthManager;
 use Aqtivite\Php\Auth\PasswordCredential;
 use Aqtivite\Php\Auth\Token;
+use Aqtivite\Php\Contracts\HttpTransportInterface;
+use Aqtivite\Php\Http\GuzzleTransport;
 use Aqtivite\Php\Modules\CommonModule;
 use Aqtivite\Php\Modules\UserModule;
 use Aqtivite\Php\Response\ApiResponse;
@@ -19,8 +21,18 @@ class Aqtivite
     public function __construct(string $clientId, string $clientSecret)
     {
         $this->config = new Config($clientId, $clientSecret);
-        $this->auth = new AuthManager($this->config);
-        $this->http = new HttpClient($this->config, $this->auth);
+
+        $transport = new GuzzleTransport();
+        $this->auth = new AuthManager($this->config, $transport);
+        $this->http = new HttpClient($this->config, $this->auth, $transport);
+    }
+
+    public function setTransport(HttpTransportInterface $transport): static
+    {
+        $this->auth->setTransport($transport);
+        $this->http->setTransport($transport);
+
+        return $this;
     }
 
     public function setAccount(string $username, string $password): static

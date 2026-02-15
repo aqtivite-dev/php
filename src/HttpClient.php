@@ -3,25 +3,21 @@
 namespace Aqtivite\Php;
 
 use Aqtivite\Php\Auth\AuthManager;
+use Aqtivite\Php\Contracts\HttpTransportInterface;
 use Aqtivite\Php\Exceptions\ApiException;
 use Aqtivite\Php\Response\ApiResponse;
-use GuzzleHttp\Client;
-use GuzzleHttp\Exception\GuzzleException;
 
 class HttpClient
 {
-    private Client $guzzle;
-
     public function __construct(
         private readonly Config $config,
         private readonly AuthManager $auth,
-    ) {
-        $this->guzzle = new Client([
-            'http_errors' => false,
-            'headers' => [
-                'Accept' => 'application/json',
-            ],
-        ]);
+        private HttpTransportInterface $transport,
+    ) {}
+
+    public function setTransport(HttpTransportInterface $transport): void
+    {
+        $this->transport = $transport;
     }
 
     public function get(string $path, array $query = []): ApiResponse
@@ -65,31 +61,22 @@ class HttpClient
             $options['headers']['Authorization'] = 'Bearer ' . $token->accessToken;
         }
 
-        try {
-            $response = $this->guzzle->request($method, $url, $options);
-        } catch (GuzzleException $e) {
-            throw new ApiException(
-                message: 'HTTP request failed: ' . $e->getMessage(),
-                code: $e->getCode(),
-                previous: $e,
-            );
-        }
+        $response = $this->transport->send($method, $url, $options);
 
-        $statusCode = $response->getStatusCode();
-        $body = json_decode($response->getBody()->getContents(), true) ?? [];
-
-        if ($statusCode === 401 && !$retried) {
+        if ($response->statusCode === 401 && !$retried) {
             $this->auth->login();
 
             return $this->request($method, $path, $options, retried: true);
         }
+
+        $body = $response->body;
 
         if (isset($body['status']) && $body['status'] === false) {
             $error = $body['error'] ?? [];
 
             throw new ApiException(
                 message: $error['description'] ?? 'API request failed',
-                code: $error['code'] ?? $statusCode,
+                code: $error['code'] ?? $response->statusCode,
                 errorType: $error['type'] ?? null,
             );
         }
