@@ -107,6 +107,19 @@ $token->tokenType;
 $token->expiresIn;
 ```
 
+### Token Yenilendiğinde Bildirim
+
+Token yenilendiğinde veya yeniden giriş yapıldığında callback tetiklenir. Bu sayede yeni token'ı kalıcı olarak saklayabilirsiniz.
+
+```php
+$client->onTokenRefresh(function (Token $token) {
+    DB::table('oauth_tokens')->update([
+        'access_token' => $token->accessToken,
+        'refresh_token' => $token->refreshToken,
+    ]);
+});
+```
+
 ## Kullanım
 
 ### Auth
@@ -120,14 +133,15 @@ $client->logout();  // Oturumu kapat
 
 ```php
 // Kullanıcılar
-$client->user()->users()->get();                         // Listele
-$client->user()->users()->get(['name' => 'mehmet']);     // Filtrele
-$client->user()->users()->find('mehmet.ogmen');          // Detay
-$client->user()->users()->events('mehmet.ogmen');        // Kullanıcının etkinlikleri
+$client->user()->users()->get();                                          // Listele
+$client->user()->users()->get(filter: ['name' => 'mehmet']);              // Filtrele
+$client->user()->users()->get(query: ['page' => 2, 'length' => 20]);    // Sayfalama
+$client->user()->users()->find('mehmet.ogmen');                           // Detay
+$client->user()->users()->events('mehmet.ogmen');                         // Kullanıcının etkinlikleri
 
 // Etkinlikler
-$client->user()->events()->get();                        // Listele
-$client->user()->events()->get(['order' => 'price[desc]']);
+$client->user()->events()->get();                                         // Listele
+$client->user()->events()->get(query: ['order' => 'price[desc]']);
 $client->user()->events()->find('etkinlik-slug');        // Detay
 $client->user()->events()->create([                      // Oluştur
     'event_category_id' => 1,
@@ -146,7 +160,7 @@ $client->user()->eventCategories()->get();
 $client->user()->eventCategories()->find(1);
 
 // Seanslar
-$client->user()->occurrences()->get(['event_id' => 6999]);
+$client->user()->occurrences()->get(filter: ['event_id' => 6999]);
 $client->user()->occurrences()->find(166);
 
 // Organizatörler
@@ -192,7 +206,11 @@ $client->common()->provinces()->get();
 $client->common()->provinces()->find(1);
 
 // İlçeler
-$client->common()->districts()->get(['province_id' => 3, 'name' => 'ala']);
+$client->common()->districts()->get(filter: ['province_id' => 3, 'name' => 'ala']);
+$client->common()->districts()->get(                    // Filter + sayfalama
+    filter: ['province_id' => 3],
+    query: ['page' => 1],
+);
 $client->common()->districts()->find(1);
 
 // Mahalleler

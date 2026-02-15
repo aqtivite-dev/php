@@ -56,6 +56,13 @@ class Aqtivite
         return $this;
     }
 
+    public function onTokenRefresh(\Closure $callback): static
+    {
+        $this->auth->onTokenRefresh($callback);
+
+        return $this;
+    }
+
     public function login(): Token
     {
         return $this->auth->login();

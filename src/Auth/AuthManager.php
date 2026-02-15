@@ -11,6 +11,7 @@ class AuthManager
 {
     private ?Token $token = null;
     private ?CredentialInterface $credential = null;
+    private ?\Closure $onTokenRefresh = null;
 
     public function __construct(
         private readonly Config $config,
@@ -33,6 +34,11 @@ class AuthManager
             accessToken: $accessToken,
             refreshToken: $refreshToken,
         );
+    }
+
+    public function onTokenRefresh(\Closure $callback): void
+    {
+        $this->onTokenRefresh = $callback;
     }
 
     public function getToken(): ?Token
@@ -60,6 +66,17 @@ class AuthManager
 
         // 3. Credential ile giriş yap
         return $this->authenticate();
+    }
+
+    private function updateToken(Token $token): Token
+    {
+        $this->token = $token;
+
+        if ($this->onTokenRefresh) {
+            ($this->onTokenRefresh)($token);
+        }
+
+        return $token;
     }
 
     private function checkToken(): bool
@@ -107,14 +124,12 @@ class AuthManager
             throw new AuthenticationException($body['message'] ?? $body['error_description'] ?? 'Token refresh failed.');
         }
 
-        $this->token = new Token(
+        return $this->updateToken(new Token(
             accessToken: $body['access_token'],
             refreshToken: $body['refresh_token'] ?? null,
             tokenType: $body['token_type'] ?? 'Bearer',
             expiresIn: $body['expires_in'] ?? null,
-        );
-
-        return $this->token;
+        ));
     }
 
     private function authenticate(): Token
@@ -142,13 +157,11 @@ class AuthManager
             throw new AuthenticationException($body['message'] ?? $body['error_description'] ?? 'Authentication failed.');
         }
 
-        $this->token = new Token(
+        return $this->updateToken(new Token(
             accessToken: $body['access_token'],
             refreshToken: $body['refresh_token'] ?? null,
             tokenType: $body['token_type'] ?? 'Bearer',
             expiresIn: $body['expires_in'] ?? null,
-        );
-
-        return $this->token;
+        ));
     }
 }

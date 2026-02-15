@@ -9,14 +9,18 @@ class UserResource extends Resource
 {
     protected string $basePath = '/user/users';
 
-    public function events(string $slug, array $filter = []): ApiResponse
+    public function events(string $slug, array $filter = [], array $query = []): ApiResponse
     {
-        $query = [];
+        $params = [];
 
         foreach ($filter as $key => $value) {
-            $query["filter[{$key}]"] = $value;
+            $params["filter[{$key}]"] = $value;
         }
 
-        return $this->http->get("{$this->basePath}/{$slug}/events", $query);
+        foreach ($query as $key => $value) {
+            $params[$key] = $value;
+        }
+
+        return $this->http->get("{$this->basePath}/{$slug}/events", $params);
     }
 }

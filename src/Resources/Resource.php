@@ -13,15 +13,19 @@ abstract class Resource
         protected readonly HttpClient $http,
     ) {}
 
-    public function get(array $filter = []): ApiResponse
+    public function get(array $filter = [], array $query = []): ApiResponse
     {
-        $query = [];
+        $params = [];
 
         foreach ($filter as $key => $value) {
-            $query["filter[{$key}]"] = $value;
+            $params["filter[{$key}]"] = $value;
         }
 
-        return $this->http->get($this->basePath, $query);
+        foreach ($query as $key => $value) {
+            $params[$key] = $value;
+        }
+
+        return $this->http->get($this->basePath, $params);
     }
 
     public function find(string|int $id): ApiResponse
