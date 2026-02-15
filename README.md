@@ -10,7 +10,7 @@ Aqtivite REST API için resmi PHP SDK'sı.
 ## Kurulum
 
 ```bash
-composer require aqtivite/php-sdk
+composer require aqtivite/php
 ```
 
 ## Hızlı Başlangıç
