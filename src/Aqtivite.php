@@ -6,6 +6,7 @@ use Aqtivite\Php\Auth\ApiCredential;
 use Aqtivite\Php\Auth\AuthManager;
 use Aqtivite\Php\Auth\PasswordCredential;
 use Aqtivite\Php\Auth\Token;
+use Aqtivite\Php\Concerns\Macroable;
 use Aqtivite\Php\Contracts\HttpTransportInterface;
 use Aqtivite\Php\Http\GuzzleTransport;
 use Aqtivite\Php\Modules\CommonModule;
@@ -14,6 +15,8 @@ use Aqtivite\Php\Response\ApiResponse;
 
 class Aqtivite
 {
+    use Macroable;
+
     private Config $config;
     private AuthManager $auth;
     private HttpClient $http;
@@ -105,6 +108,11 @@ class Aqtivite
     public function getToken(): ?Token
     {
         return $this->auth->getToken();
+    }
+
+    public function getHttpClient(): HttpClient
+    {
+        return $this->http;
     }
 
     public function getConfig(): Config
