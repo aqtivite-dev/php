@@ -1,8 +1,21 @@
 {
-    "name": "aqtivite/php-sdk",
+    "name": "aqtivite/php",
     "description": "PHP SDK for Aqtivite API",
     "type": "library",
     "license": "MIT",
+    "homepage": "https://github.com/aqtivite-dev/php",
+    "keywords": ["aqtivite", "sdk", "api", "php", "rest"],
+    "authors": [
+        {
+            "name": "Mehmet ÖĞMEN",
+            "email": "www@mehmetogmen.com.tr",
+            "homepage": "https://mehmetogmen.com.tr",
+        }
+    ],
+    "support": {
+        "issues": "https://github.com/aqtivite-dev/php/issues",
+        "source": "https://github.com/aqtivite-dev/php"
+    },
     "autoload": {
         "psr-4": {
             "Aqtivite\\Php\\": "src/"
@@ -14,5 +27,8 @@
     },
     "require-dev": {
         "phpunit/phpunit": "^11.0"
+    },
+    "config": {
+        "sort-packages": true
     }
 }
