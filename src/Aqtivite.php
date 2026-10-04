@@ -2,16 +2,14 @@
 
 namespace Aqtivite\Php;
 
-use Aqtivite\Php\Auth\ApiCredential;
 use Aqtivite\Php\Auth\AuthManager;
-use Aqtivite\Php\Auth\PasswordCredential;
 use Aqtivite\Php\Auth\Token;
 use Aqtivite\Php\Concerns\Macroable;
 use Aqtivite\Php\Contracts\HttpTransportInterface;
 use Aqtivite\Php\Http\GuzzleTransport;
 use Aqtivite\Php\Modules\CommonModule;
 use Aqtivite\Php\Modules\UserModule;
-use Aqtivite\Php\Response\ApiResponse;
+use DateTimeImmutable;
 
 class Aqtivite
 {
@@ -21,9 +19,12 @@ class Aqtivite
     private AuthManager $auth;
     private HttpClient $http;
 
-    public function __construct(string $clientId, string $clientSecret)
+    /**
+     * @param  string[]  $scopes
+     */
+    public function __construct(string $clientId, string $clientSecret, array $scopes = [])
     {
-        $this->config = new Config($clientId, $clientSecret);
+        $this->config = new Config($clientId, $clientSecret, $scopes);
 
         $transport = new GuzzleTransport();
         $this->auth = new AuthManager($this->config, $transport);
@@ -38,37 +39,33 @@ class Aqtivite
         return $this;
     }
 
-    public function setAccount(string $username, string $password): static
+    /**
+     * @param  string[]  $scopes
+     */
+    public function setScopes(array $scopes): static
     {
-        $this->auth->setCredential(new PasswordCredential($username, $password));
+        $this->config->setScopes($scopes);
 
         return $this;
     }
 
-    public function setApiKey(string $apiKey, string $apiSecret): static
+    public function setToken(string $accessToken, ?DateTimeImmutable $expiresAt = null): static
     {
-        $this->auth->setCredential(new ApiCredential($apiKey, $apiSecret));
+        $this->auth->setToken($accessToken, $expiresAt);
 
         return $this;
     }
 
-    public function setToken(string $accessToken, ?string $refreshToken = null): static
+    public function onTokenIssued(\Closure $callback): static
     {
-        $this->auth->setToken($accessToken, $refreshToken);
+        $this->auth->onTokenIssued($callback);
 
         return $this;
     }
 
-    public function onTokenRefresh(\Closure $callback): static
+    public function issueToken(): Token
     {
-        $this->auth->onTokenRefresh($callback);
-
-        return $this;
-    }
-
-    public function login(): Token
-    {
-        return $this->auth->login();
+        return $this->auth->issueToken();
     }
 
     public function testMode(bool $enabled = true): static
@@ -83,16 +80,6 @@ class Aqtivite
         $this->config->setBaseUrl($url);
 
         return $this;
-    }
-
-    public function me(): ApiResponse
-    {
-        return $this->http->get('/auth');
-    }
-
-    public function logout(): ApiResponse
-    {
-        return $this->http->delete('/auth');
     }
 
     public function user(): UserModule

@@ -56,15 +56,12 @@ class HttpClient
     {
         $url = $this->config->getBaseUrl() . $path;
 
-        $token = $this->auth->getToken();
-        if ($token) {
-            $options['headers']['Authorization'] = 'Bearer ' . $token->accessToken;
-        }
+        $options['headers']['Authorization'] = 'Bearer ' . $this->auth->token()->accessToken;
 
         $response = $this->transport->send($method, $url, $options);
 
         if ($response->statusCode === 401 && !$retried) {
-            $this->auth->login();
+            $this->auth->issueToken();
 
             return $this->request($method, $path, $options, retried: true);
         }

@@ -6,7 +6,6 @@ use Aqtivite\Php\Resources\User\EventCategoryResource;
 use Aqtivite\Php\Resources\User\EventResource;
 use Aqtivite\Php\Resources\User\OccurrenceResource;
 use Aqtivite\Php\Resources\User\OrganizerResource;
-use Aqtivite\Php\Resources\User\PostResource;
 use Aqtivite\Php\Resources\User\UserResource;
 use Aqtivite\Php\Response\ApiResponse;
 
@@ -35,11 +34,6 @@ class UserModule extends Module
     public function organizers(): OrganizerResource
     {
         return new OrganizerResource($this->http);
-    }
-
-    public function posts(): PostResource
-    {
-        return new PostResource($this->http);
     }
 
     public function search(string $query): ApiResponse

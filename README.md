@@ -18,11 +18,9 @@ composer require aqtivite/php
 ```php
 use Aqtivite\Php\Aqtivite;
 
-$client = new Aqtivite('client-id', 'client-secret');
-$client->setAccount('kullanici@example.com', 'sifre');
-$client->login();
+$client = new Aqtivite('client-id', 'client-secret', ['admin:tickets:read']);
 
-$response = $client->user()->users()->get();
+$response = $client->user()->events()->get();
 ```
 
 ## Yapılandırma
@@ -68,33 +66,33 @@ $client->setTransport(new LaravelTransport());
 
 ## Kimlik Doğrulama
 
-### Kullanıcı Adı / Şifre
+SDK, API'ye OAuth2 `client_credentials` grant'i ile bağlanır. Her servis API'de kendi client'ı ile tanımlıdır; token bir kullanıcıyı değil client'ın kendisini temsil eder ve yalnızca client'a tanınan scope'ları taşır.
 
 ```php
-$client = new Aqtivite('client-id', 'client-secret');
-$client->setAccount('kullanici@example.com', 'sifre');
-$client->login();
+$client = new Aqtivite('client-id', 'client-secret', [
+    'admin:venues:read',
+    'admin:events:create',
+]);
 ```
 
-### Mevcut Token ile Giriş
+Scope'lar sonradan da verilebilir:
 
 ```php
-$client = new Aqtivite('client-id', 'client-secret');
-$client->setAccount('kullanici@example.com', 'sifre');
-$client->setToken('access-token', 'refresh-token');
-$client->login();
+$client->setScopes(['admin:tickets:read']);
 ```
 
-`login()` metodu sırasıyla:
-
-1. Token geçerli mi kontrol eder (`GET /auth`)
-2. Geçersizse `refresh_token` ile yeniler
-3. Yenileme başarısızsa credential ile tekrar giriş yapar
-
-### API Anahtarı (Yakında)
+Token ilk istekte alınır. Süresinin dolmasına 60 saniye kala ya da API `401` döndürdüğünde yenisi alınır. Token'ı elle almak için:
 
 ```php
-$client->setApiKey('api-key', 'api-secret');
+$token = $client->issueToken();
+```
+
+### Mevcut Token ile Başlama
+
+Daha önce saklanmış bir token yüklenebilir. Süresi dolmuşsa SDK yenisini alır.
+
+```php
+$client->setToken('access-token', new DateTimeImmutable('2026-10-05 12:00:00'));
 ```
 
 ### Token Bilgisi
@@ -102,32 +100,25 @@ $client->setApiKey('api-key', 'api-secret');
 ```php
 $token = $client->getToken();
 $token->accessToken;
-$token->refreshToken;
+$token->expiresAt;   // DateTimeImmutable|null
 $token->tokenType;
-$token->expiresIn;
+$token->isExpired();
 ```
 
-### Token Yenilendiğinde Bildirim
+### Yeni Token Alındığında Bildirim
 
-Token yenilendiğinde veya yeniden giriş yapıldığında callback tetiklenir. Bu sayede yeni token'ı kalıcı olarak saklayabilirsiniz.
+Yeni bir token alındığında callback tetiklenir. Bu sayede token kalıcı olarak saklanabilir.
 
 ```php
-$client->onTokenRefresh(function (Token $token) {
-    DB::table('oauth_tokens')->update([
+$client->onTokenIssued(function (Token $token) {
+    Cache::put('aqtivite_token', [
         'access_token' => $token->accessToken,
-        'refresh_token' => $token->refreshToken,
+        'expires_at' => $token->expiresAt?->format(DATE_ATOM),
     ]);
 });
 ```
 
 ## Kullanım
-
-### Auth
-
-```php
-$client->me();      // Giriş yapan kullanıcı bilgisi
-$client->logout();  // Oturumu kapat
-```
 
 ### User Modülü
 
@@ -143,17 +134,6 @@ $client->user()->users()->events('mehmet.ogmen');                         // Kul
 $client->user()->events()->get();                                         // Listele
 $client->user()->events()->get(query: ['order' => 'price[desc]']);
 $client->user()->events()->find('etkinlik-slug');        // Detay
-$client->user()->events()->create([                      // Oluştur
-    'event_category_id' => 1,
-    'title' => 'Etkinlik Başlığı',
-    'started_at' => '2025-01-08T23:00:00.000+03:00',
-    'ended_at' => '2025-01-09T00:00:00.000+03:00',
-    'is_online' => 'false',
-    'location_id' => 1,
-    'is_pricable' => 'false',
-    'person_capacity' => 0,
-    'is_commentable' => 'true',
-]);
 
 // Etkinlik Kategorileri
 $client->user()->eventCategories()->get();
@@ -166,13 +146,6 @@ $client->user()->occurrences()->find(166);
 // Organizatörler
 $client->user()->organizers()->get();
 $client->user()->organizers()->find('aqtivite');
-
-// Gönderiler
-$client->user()->posts()->get();
-$client->user()->posts()->create([
-    'content' => 'Gönderi içeriği',
-    'photos' => ['/path/to/photo.jpg'],
-]);
 
 // Arama & Ağ
 $client->user()->search('aqtivite');
@@ -254,7 +227,6 @@ use Aqtivite\Php\Exceptions\ApiException;
 use Aqtivite\Php\Exceptions\AqtiviteException;
 
 try {
-    $client->login();
     $response = $client->user()->users()->get();
 } catch (AuthenticationException $e) {
     // Kimlik doğrulama hatası
