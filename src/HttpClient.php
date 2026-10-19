@@ -5,6 +5,8 @@ namespace Aqtivite\Php;
 use Aqtivite\Php\Auth\AuthManager;
 use Aqtivite\Php\Contracts\HttpTransportInterface;
 use Aqtivite\Php\Exceptions\ApiException;
+use Aqtivite\Php\Exceptions\MissingScopeException;
+use Aqtivite\Php\Http\TransportResponse;
 use Aqtivite\Php\Response\ApiResponse;
 
 class HttpClient
@@ -66,6 +68,16 @@ class HttpClient
             return $this->request($method, $path, $options, retried: true);
         }
 
+        if (($missingScopes = $this->missingScopes($response)) !== null) {
+            if (! $retried) {
+                $this->auth->issueToken();
+
+                return $this->request($method, $path, $options, retried: true);
+            }
+
+            throw new MissingScopeException($missingScopes);
+        }
+
         $body = $response->body;
 
         if (isset($body['status']) && $body['status'] === false) {
@@ -79,5 +91,21 @@ class HttpClient
         }
 
         return ApiResponse::fromArray($body);
+    }
+
+    /**
+     * @return string[]|null
+     */
+    private function missingScopes(TransportResponse $response): ?array
+    {
+        $challenge = $response->header('WWW-Authenticate') ?? '';
+
+        if ($response->statusCode !== 403 || ! str_contains($challenge, 'error="insufficient_scope"')) {
+            return null;
+        }
+
+        preg_match('/scope="([^"]*)"/', $challenge, $matches);
+
+        return array_values(array_filter(explode(' ', $matches[1] ?? '')));
     }
 }

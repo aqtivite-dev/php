@@ -52,14 +52,19 @@ class AuthManager
 
     public function issueToken(): Token
     {
+        $params = [
+            'grant_type' => 'client_credentials',
+            'client_id' => $this->config->clientId,
+            'client_secret' => $this->config->clientSecret,
+        ];
+
+        if ($scopes = $this->config->getScopes()) {
+            $params['scope'] = implode(' ', $scopes);
+        }
+
         try {
             $response = $this->transport->send('POST', $this->config->getBaseUrl() . '/oauth/token', [
-                'form_params' => [
-                    'grant_type' => 'client_credentials',
-                    'client_id' => $this->config->clientId,
-                    'client_secret' => $this->config->clientSecret,
-                    'scope' => implode(' ', $this->config->getScopes()),
-                ],
+                'form_params' => $params,
             ]);
         } catch (AqtiviteException $e) {
             throw new AuthenticationException('Authentication failed: ' . $e->getMessage(), previous: $e);

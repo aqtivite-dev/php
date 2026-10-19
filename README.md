@@ -18,7 +18,7 @@ composer require aqtivite/php
 ```php
 use Aqtivite\Php\Aqtivite;
 
-$client = new Aqtivite('client-id', 'client-secret', ['admin:tickets:read']);
+$client = new Aqtivite('client-id', 'client-secret');
 
 $response = $client->user()->events()->get();
 ```
@@ -56,6 +56,7 @@ class LaravelTransport implements HttpTransportInterface
         return new TransportResponse(
             statusCode: $response->status(),
             body: $response->json() ?? [],
+            headers: array_map(fn (array $values) => implode(', ', $values), $response->headers()),
         );
     }
 }
@@ -64,24 +65,29 @@ $client = new Aqtivite('client-id', 'client-secret');
 $client->setTransport(new LaravelTransport());
 ```
 
+Transport, cevap başlıklarını `headers` ile iletmelidir. SDK eksik scope'u `WWW-Authenticate` başlığından tanır.
+
 ## Kimlik Doğrulama
 
-SDK, API'ye OAuth2 `client_credentials` grant'i ile bağlanır. Her servis API'de kendi client'ı ile tanımlıdır; token bir kullanıcıyı değil client'ın kendisini temsil eder ve yalnızca client'a tanınan scope'ları taşır.
+SDK, API'ye OAuth2 `client_credentials` grant'i ile bağlanır. Her servis API'de kendi client'ı ile tanımlıdır; token bir kullanıcıyı değil client'ın kendisini temsil eder.
+
+Hangi scope'ların verileceği API'de, client'ın kaydında tanımlıdır. Scope belirtmeyen client'ın token'ı client'a tanınan bütün scope'ları taşır; SDK tarafında liste tutmak gerekmez.
+
+Token'ı belirli scope'larla daraltmak için scope listesi verilebilir. Listede olup client'a tanınmamış scope'lar token'a yazılmaz.
 
 ```php
-$client = new Aqtivite('client-id', 'client-secret', [
-    'admin:venues:read',
-    'admin:events:create',
-]);
-```
+$client = new Aqtivite('client-id', 'client-secret', ['admin:venues:read']);
 
-Scope'lar sonradan da verilebilir:
-
-```php
 $client->setScopes(['admin:tickets:read']);
 ```
 
-Token ilk istekte alınır. Süresinin dolmasına 60 saniye kala ya da API `401` döndürdüğünde yenisi alınır. Token'ı elle almak için:
+Token ilk istekte alınır. Şu durumlarda yenisi alınır:
+
+- Süresinin dolmasına 60 saniye kaldığında.
+- API `401` döndürdüğünde.
+- API `403` ile `insufficient_scope` döndürdüğünde. Client'a sonradan tanınan bir scope, eski token'da bulunmaz; SDK yeni token alıp isteği bir kez tekrarlar.
+
+Token'ı elle almak için:
 
 ```php
 $token = $client->issueToken();
@@ -102,6 +108,7 @@ $token = $client->getToken();
 $token->accessToken;
 $token->expiresAt;   // DateTimeImmutable|null
 $token->tokenType;
+$token->scopes;       // API'nin token cevabında bildirdiği scope'lar
 $token->isExpired();
 ```
 
@@ -225,12 +232,16 @@ $response->hasPreviousPage();  // Önceki sayfa var mı?
 use Aqtivite\Php\Exceptions\AuthenticationException;
 use Aqtivite\Php\Exceptions\ApiException;
 use Aqtivite\Php\Exceptions\AqtiviteException;
+use Aqtivite\Php\Exceptions\MissingScopeException;
 
 try {
     $response = $client->user()->users()->get();
 } catch (AuthenticationException $e) {
     // Kimlik doğrulama hatası
     echo $e->getMessage();
+} catch (MissingScopeException $e) {
+    // Yeni token'la da eksik kalan scope'lar
+    echo implode(' ', $e->scopes);
 } catch (ApiException $e) {
     // API hatası
     echo $e->getMessage();

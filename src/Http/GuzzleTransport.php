@@ -38,6 +38,7 @@ class GuzzleTransport implements HttpTransportInterface
         return new TransportResponse(
             statusCode: $response->getStatusCode(),
             body: $body,
+            headers: array_map(fn (array $values) => implode(', ', $values), $response->getHeaders()),
         );
     }
 }
