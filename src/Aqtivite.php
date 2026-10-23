@@ -7,7 +7,6 @@ use Aqtivite\Php\Auth\Token;
 use Aqtivite\Php\Concerns\Macroable;
 use Aqtivite\Php\Contracts\HttpTransportInterface;
 use Aqtivite\Php\Http\GuzzleTransport;
-use Aqtivite\Php\Modules\CommonModule;
 use Aqtivite\Php\Modules\UserModule;
 use DateTimeImmutable;
 
@@ -85,11 +84,6 @@ class Aqtivite
     public function user(): UserModule
     {
         return new UserModule($this->http);
-    }
-
-    public function common(): CommonModule
-    {
-        return new CommonModule($this->http);
     }
 
     public function getToken(): ?Token

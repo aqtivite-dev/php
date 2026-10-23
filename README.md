@@ -154,48 +154,28 @@ $client->user()->occurrences()->find(166);
 $client->user()->organizers()->get();
 $client->user()->organizers()->find('aqtivite');
 
-// Arama & Ağ
-$client->user()->search('aqtivite');
-$client->user()->network();
-```
-
-### Common Modülü
-
-```php
 // Mekanlar
-$client->common()->venues()->get();
-$client->common()->venues()->find(1);
-
-// Salonlar
-$client->common()->halls()->get();
-$client->common()->halls()->find(1);
-
-// Para Birimleri
-$client->common()->currencies()->get();
-
-// Bölgeler
-$client->common()->regions()->get();
-$client->common()->regions()->find(1);
-
-// Ülkeler
-$client->common()->countries()->get();
-$client->common()->countries()->find(1);
+$client->user()->venues()->get(filter: ['province_id' => 34]);
+$client->user()->venues()->find('mekan-slug');
 
 // İller
-$client->common()->provinces()->get();
-$client->common()->provinces()->find(1);
+$client->user()->provinces()->get();
+$client->user()->provinces()->find(34);
 
 // İlçeler
-$client->common()->districts()->get(filter: ['province_id' => 3, 'name' => 'ala']);
-$client->common()->districts()->get(                    // Filter + sayfalama
+$client->user()->districts()->get(filter: ['province_id' => 3, 'name' => 'ala']);
+$client->user()->districts()->get(                      // Filter + sayfalama
     filter: ['province_id' => 3],
     query: ['page' => 1],
 );
-$client->common()->districts()->find(1);
+$client->user()->districts()->find(1);
 
-// Mahalleler
-$client->common()->neighborhoods()->get();
-$client->common()->neighborhoods()->find(1);
+// Para Birimleri
+$client->user()->currencies()->get();
+
+// Arama & Ağ
+$client->user()->search('aqtivite');
+$client->user()->network();
 ```
 
 ## Response Yapısı
